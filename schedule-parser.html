@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shift Parser</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0d0f;
+    --surface: #141416;
+    --border: #222228;
+    --accent: #c8f060;
+    --accent2: #60d0f0;
+    --text: #e8e8ec;
+    --muted: #666672;
+    --danger: #f06060;
+    --warn: #f0b060;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    min-height: 100vh;
+    padding: 24px 16px 60px;
+  }
+
+  header { margin-bottom: 32px; }
+
+  header h1 {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: clamp(1.8rem, 6vw, 2.8rem);
+    letter-spacing: -0.03em;
+    color: var(--accent);
+    line-height: 1;
+  }
+
+  header p {
+    color: var(--muted);
+    font-size: 0.78rem;
+    margin-top: 6px;
+    letter-spacing: 0.05em;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+
+  label {
+    display: block;
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+
+  textarea {
+    width: 100%;
+    min-height: 180px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.72rem;
+    line-height: 1.6;
+    padding: 14px;
+    resize: vertical;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  textarea:focus { border-color: var(--accent); }
+
+  .row {
+    display: flex;
+    gap: 12px;
+    margin-top: 14px;
+    align-items: flex-end;
+  }
+
+  .field { flex: 1; }
+  .field label { margin-bottom: 6px; }
+
+  select {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.78rem;
+    padding: 10px 12px;
+    outline: none;
+    appearance: none;
+    transition: border-color 0.2s;
+  }
+
+  select:focus { border-color: var(--accent); }
+
+  button {
+    background: var(--accent);
+    color: #0d0d0f;
+    border: none;
+    border-radius: 8px;
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 0.85rem;
+    letter-spacing: 0.04em;
+    padding: 11px 20px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: opacity 0.15s, transform 0.1s;
+    flex-shrink: 0;
+  }
+
+  button:active { transform: scale(0.97); opacity: 0.85; }
+
+  #results { display: none; }
+
+  .section-label {
+    font-size: 0.68rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 14px;
+  }
+
+  .event-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+
+  .event-item {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    animation: slideIn 0.25s ease both;
+  }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .event-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    flex-shrink: 0;
+  }
+
+  .event-body { flex: 1; min-width: 0; }
+
+  .event-title {
+    font-family: 'Syne', sans-serif;
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .event-time {
+    font-size: 0.7rem;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
+  .skipped-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .skipped-item {
+    font-size: 0.72rem;
+    color: var(--warn);
+    padding: 8px 12px;
+    background: rgba(240,176,96,0.06);
+    border: 1px solid rgba(240,176,96,0.15);
+    border-radius: 6px;
+  }
+
+  .add-btn {
+    width: 100%;
+    background: var(--accent2);
+    color: #0d0d0f;
+    border: none;
+    border-radius: 8px;
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 0.9rem;
+    padding: 14px;
+    cursor: pointer;
+    letter-spacing: 0.04em;
+    transition: opacity 0.15s;
+    margin-top: 4px;
+  }
+
+  .add-btn:active { opacity: 0.8; }
+
+  .status {
+    text-align: center;
+    font-size: 0.75rem;
+    margin-top: 12px;
+    min-height: 20px;
+    color: var(--accent);
+  }
+
+  .status.error { color: var(--danger); }
+
+  .summary-bar {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+
+  .stat {
+    flex: 1;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    text-align: center;
+  }
+
+  .stat-num {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 1.6rem;
+    color: var(--accent);
+    line-height: 1;
+  }
+
+  .stat-label {
+    font-size: 0.65rem;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-top: 4px;
+  }
+
+  .auto-banner {
+    background: rgba(200,240,96,0.08);
+    border: 1px solid rgba(200,240,96,0.25);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 0.72rem;
+    color: var(--accent);
+    margin-bottom: 16px;
+    display: none;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Shift Parser</h1>
+  <p>PASTE SCHEDULE → ADD TO CALENDAR</p>
+</header>
+
+<div class="auto-banner" id="auto-banner">
+  ⚡ Schedule received from Shortcut — ready to import.
+</div>
+
+<div class="card">
+  <label>Schedule text</label>
+  <textarea id="input" placeholder="08 Monday&#10;6:00 AM - 3:00 PM [9.00]&#10;..."></textarea>
+  <div class="row">
+    <div class="field">
+      <label>Month</label>
+      <select id="month">
+        <option value="0">January</option><option value="1">February</option>
+        <option value="2">March</option><option value="3">April</option>
+        <option value="4">May</option><option value="5">June</option>
+        <option value="6">July</option><option value="7">August</option>
+        <option value="8">September</option><option value="9">October</option>
+        <option value="10">November</option><option value="11">December</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Year</label>
+      <select id="year"></select>
+    </div>
+    <button onclick="parse()">Parse</button>
+  </div>
+</div>
+
+<div id="results" class="card">
+  <div class="summary-bar">
+    <div class="stat">
+      <div class="stat-num" id="stat-shifts">0</div>
+      <div class="stat-label">Shifts</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num" id="stat-skipped">0</div>
+      <div class="stat-label">Skipped</div>
+    </div>
+  </div>
+
+  <div class="section-label">Shifts to add</div>
+  <div class="event-list" id="event-list"></div>
+
+  <div id="skipped-section" style="display:none;">
+    <div class="section-label" style="margin-top:16px;">Skipped (HOL / VAC / UNPAID)</div>
+    <div class="skipped-list" id="skipped-list"></div>
+  </div>
+
+  <button class="add-btn" onclick="addAll()">Add All to Calendar</button>
+  <div class="status" id="status"></div>
+</div>
+
+<script>
+  const now = new Date();
+  const yearSel = document.getElementById('year');
+  for (let y = now.getFullYear() - 1; y <= now.getFullYear() + 2; y++) {
+    const o = document.createElement('option');
+    o.value = y; o.textContent = y;
+    if (y === now.getFullYear()) o.selected = true;
+    yearSel.appendChild(o);
+  }
+  document.getElementById('month').value = now.getMonth();
+
+  const SKIP_KEYWORDS = ['HOL', 'VAC', 'UNPAID'];
+  const DAY_HEADER = /^(\d{1,2})\s+(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)$/i;
+  const TIME_RANGE = /^(\d{1,2}:\d{2}\s*[AP]M)\s*-\s*(\d{1,2}:\d{2}\s*[AP]M)/i;
+
+  let parsedEvents = [];
+
+  // ── Read ?schedule= URL param (from Shortcut) ──────────────────────────────
+  window.addEventListener('DOMContentLoaded', () => {
+    const params = new URLSearchParams(window.location.search);
+    const scheduleParam = params.get('schedule');
+    if (scheduleParam) {
+      document.getElementById('input').value = scheduleParam;
+      document.getElementById('auto-banner').style.display = 'block';
+      // Auto-detect month from the schedule text if possible, else use current
+      parse();
+    }
+  });
+
+  function parseTime(dateObj, timeStr) {
+    const clean = timeStr.trim();
+    const [time, meridiem] = clean.split(/\s+/);
+    let [h, m] = time.split(':').map(Number);
+    if (meridiem.toUpperCase() === 'PM' && h !== 12) h += 12;
+    if (meridiem.toUpperCase() === 'AM' && h === 12) h = 0;
+    const d = new Date(dateObj);
+    d.setHours(h, m, 0, 0);
+    return d;
+  }
+
+  function parse() {
+    const raw = document.getElementById('input').value.trim();
+    const month = parseInt(document.getElementById('month').value);
+    const year = parseInt(document.getElementById('year').value);
+
+    if (!raw) { showStatus('Paste your schedule first.', true); return; }
+
+    const lines = raw.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+    parsedEvents = [];
+    const skipped = [];
+
+    let currentDate = null;
+    let expectShift = false;
+
+    for (const line of lines) {
+      const headerMatch = line.match(DAY_HEADER);
+      if (headerMatch) {
+        const day = parseInt(headerMatch[1]);
+        currentDate = new Date(year, month, day);
+        expectShift = true;
+        continue;
+      }
+
+      if (!currentDate) continue;
+
+      if (SKIP_KEYWORDS.some(k => line.includes(k))) {
+        skipped.push(`${currentDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} — ${line}`);
+        expectShift = false;
+        continue;
+      }
+
+      if (expectShift) {
+        const timeMatch = line.match(TIME_RANGE);
+        if (timeMatch) {
+          const start = parseTime(currentDate, timeMatch[1]);
+          const end = parseTime(currentDate, timeMatch[2]);
+          parsedEvents.push({ start, end, date: new Date(currentDate) });
+          expectShift = false;
+        }
+      }
+    }
+
+    const eventList = document.getElementById('event-list');
+    const skippedList = document.getElementById('skipped-list');
+    eventList.innerHTML = '';
+    skippedList.innerHTML = '';
+
+    parsedEvents.forEach((ev, i) => {
+      const item = document.createElement('div');
+      item.className = 'event-item';
+      item.style.animationDelay = `${i * 0.04}s`;
+      const dayLabel = ev.date.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
+      const startStr = ev.start.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: true });
+      const endStr = ev.end.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: true });
+      const hours = ((ev.end - ev.start) / 3600000).toFixed(1);
+      item.innerHTML = `
+        <div class="event-dot"></div>
+        <div class="event-body">
+          <div class="event-title">Work — ${dayLabel}</div>
+          <div class="event-time">${startStr} → ${endStr} · ${hours}h</div>
+        </div>`;
+      eventList.appendChild(item);
+    });
+
+    skipped.forEach(s => {
+      const item = document.createElement('div');
+      item.className = 'skipped-item';
+      item.textContent = s;
+      skippedList.appendChild(item);
+    });
+
+    document.getElementById('stat-shifts').textContent = parsedEvents.length;
+    document.getElementById('stat-skipped').textContent = skipped.length;
+    document.getElementById('skipped-section').style.display = skipped.length ? 'block' : 'none';
+    document.getElementById('results').style.display = 'block';
+    document.getElementById('status').textContent = '';
+  }
+
+  function toICS(events) {
+    const pad = n => String(n).padStart(2, '0');
+    const fmtDT = d =>
+      `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}T${pad(d.getHours())}${pad(d.getMinutes())}00`;
+
+    const lines = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//ShiftParser//EN',
+      'CALSCALE:GREGORIAN',
+    ];
+
+    events.forEach((ev, i) => {
+      lines.push(
+        'BEGIN:VEVENT',
+        `UID:shift-${ev.start.getTime()}-${i}@shiftparser`,
+        `DTSTART:${fmtDT(ev.start)}`,
+        `DTEND:${fmtDT(ev.end)}`,
+        'SUMMARY:Work',
+        'END:VEVENT'
+      );
+    });
+
+    lines.push('END:VCALENDAR');
+    return lines.join('\r\n');
+  }
+
+  function addAll() {
+    if (parsedEvents.length === 0) return;
+    const ics = toICS(parsedEvents);
+    const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'shifts.ics';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showStatus(`✓ Downloaded shifts.ics — open it to import ${parsedEvents.length} shifts.`);
+  }
+
+  function showStatus(msg, error = false) {
+    const el = document.getElementById('status');
+    el.textContent = msg;
+    el.className = 'status' + (error ? ' error' : '');
+  }
+</script>
+</body>
+</html>
